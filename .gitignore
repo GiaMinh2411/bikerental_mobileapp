@@ -1,0 +1,12 @@
+node_modules/
+.npm-cache/
+.expo/
+dist/
+web-build/
+.env
+*.db
+*.db-*
+*.tgz
+backend/backups/
+*.log
+backend/scripts/image-inputs.json

@@ -1,0 +1,291 @@
+{
+  "info": {
+    "name": "Bike Rental API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('start')) { pm.environment.set('start', new Date(Date.now()+5*60000).toISOString()); pm.environment.set('end',new Date(Date.now()+65*60000).toISOString()); }"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/health"
+      },
+      "event": []
+    },
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"full_name\": \"Postman Demo\",\n  \"email\": \"postman@bike.example\",\n  \"password\": \"Demo12345!\"\n}"
+        }
+      },
+      "event": []
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Login succeeds',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code===200) pm.environment.set('token',pm.response.json().token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/me"
+      },
+      "event": []
+    },
+    {
+      "name": "Edit profile",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/me",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"full_name\": \"Người dùng demo 1\",\n  \"phone\": \"\"\n}"
+        }
+      },
+      "event": []
+    },
+    {
+      "name": "Types",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/types"
+      },
+      "event": []
+    },
+    {
+      "name": "Stations",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/stations"
+      },
+      "event": []
+    },
+    {
+      "name": "Station detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/stations/{{station_id}}"
+      },
+      "event": []
+    },
+    {
+      "name": "Search models",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/models?q=&sort=price_asc&max=100000"
+      },
+      "event": []
+    },
+    {
+      "name": "Model detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/models/{{model_id}}"
+      },
+      "event": []
+    },
+    {
+      "name": "Availability",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/availability",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model_id\": 24,\n  \"station_id\": 6,\n  \"start\": \"{{start}}\",\n  \"end\": \"{{end}}\"\n}"
+        }
+      },
+      "event": []
+    },
+    {
+      "name": "Favorites",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/favorites"
+      },
+      "event": []
+    },
+    {
+      "name": "Add favorite",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": "{{base_url}}/favorites/{{model_id}}"
+      },
+      "event": []
+    },
+    {
+      "name": "Remove favorite",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{base_url}}/favorites/{{model_id}}"
+      },
+      "event": []
+    },
+    {
+      "name": "Book",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/rentals",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"model_id\": 24,\n  \"station_id\": 6,\n  \"start\": \"{{start}}\",\n  \"end\": \"{{end}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if(pm.response.code===201) pm.environment.set('rental_id',pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "My rentals",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/rentals"
+      },
+      "event": []
+    },
+    {
+      "name": "Rental detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/rentals/{{rental_id}}"
+      },
+      "event": []
+    },
+    {
+      "name": "Pickup (simulation)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{base_url}}/rentals/{{rental_id}}/pickup"
+      },
+      "event": []
+    },
+    {
+      "name": "Return (simulation)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{base_url}}/rentals/{{rental_id}}/return"
+      },
+      "event": []
+    },
+    {
+      "name": "Cancel (BOOKED only)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{base_url}}/rentals/{{rental_id}}/cancel"
+      },
+      "event": []
+    },
+    {
+      "name": "Advice",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/advice",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"purpose\": \"Đi hai người\",\n  \"budget\": 100000,\n  \"station_id\": 6,\n  \"start\": \"{{start}}\",\n  \"end\": \"{{end}}\",\n  \"type_id\": 8\n}"
+        }
+      },
+      "event": []
+    }
+  ]
+}

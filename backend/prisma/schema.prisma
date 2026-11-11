@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+  url = env("DATABASE_URL")
+}
+model User {
+  id Int @id @default(autoincrement())
+  full_name String
+  email String @unique
+  password_hash String
+  phone String @default("")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  rentals Rental[]
+  favorites Favorite[]
+  @@map("users")
+}
+model Station {
+  id Int @id @default(autoincrement())
+  name String
+  address String
+  latitude Float
+  longitude Float
+  image_path String
+  created_at DateTime @default(now())
+  bikes Bike[]
+  pickups Rental[] @relation("Pickup")
+  returns Rental[] @relation("Return")
+  @@map("stations")
+}
+model BikeType {
+  id Int @id @default(autoincrement())
+  name String @unique
+  description String
+  models BikeModel[]
+  @@map("bike_types")
+}
+model BikeModel {
+  id Int @id @default(autoincrement())
+  type_id Int
+  name String
+  brand String
+  description String
+  specifications String
+  type BikeType @relation(fields:[type_id],references:[id])
+  images BikeImage[]
+  bikes Bike[]
+  favorites Favorite[]
+  @@index([type_id])
+  @@map("bike_models")
+}
+model BikeImage {
+  id Int @id @default(autoincrement())
+  bike_model_id Int
+  path String
+  alt_text String
+  sort_order Int
+  model BikeModel @relation(fields:[bike_model_id],references:[id])
+  @@unique([bike_model_id,sort_order])
+  @@map("bike_images")
+}
+model Bike {
+  id Int @id @default(autoincrement())
+  code String @unique
+  bike_model_id Int
+  station_id Int
+  price_per_hour Int
+  status String @default("ACTIVE")
+  created_at DateTime @default(now())
+  model BikeModel @relation(fields:[bike_model_id],references:[id])
+  station Station @relation(fields:[station_id],references:[id])
+  rentals Rental[]
+  @@index([bike_model_id,station_id,status])
+  @@map("bikes")
+}
+model Rental {
+  id Int @id @default(autoincrement())
+  user_id Int
+  bike_id Int
+  pickup_station_id Int
+  return_station_id Int?
+  planned_start_at DateTime
+  planned_end_at DateTime
+  actual_start_at DateTime?
+  actual_end_at DateTime?
+  hourly_rate Int
+  estimated_total Int
+  final_total Int?
+  status String @default("BOOKED")
+  payment_status String @default("SIMULATED_PENDING")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user User @relation(fields:[user_id],references:[id])
+  bike Bike @relation(fields:[bike_id],references:[id])
+  pickup Station @relation("Pickup",fields:[pickup_station_id],references:[id])
+  return_station Station? @relation("Return",fields:[return_station_id],references:[id])
+  @@index([bike_id,status,planned_start_at,planned_end_at])
+  @@index([user_id,created_at])
+  @@map("rentals")
+}
+model Favorite {
+  user_id Int
+  bike_model_id Int
+  created_at DateTime @default(now())
+  user User @relation(fields:[user_id],references:[id])
+  model BikeModel @relation(fields:[bike_model_id],references:[id])
+  @@id([user_id,bike_model_id])
+  @@map("favorites")
+}
