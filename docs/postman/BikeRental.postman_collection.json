@@ -286,6 +286,373 @@
         }
       },
       "event": []
+    },
+    {
+      "name": "Upgrade endpoints",
+      "item": [
+        {
+          "name": "Người dùng",
+          "item": [
+            {
+              "name": "Catalog có lịch",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/catalog?page=1&limit=12&station={{station_id}}&start={{start}}&end={{end}}&sort=price_asc",
+                "header": []
+              }
+            },
+            {
+              "name": "Đơn thuê phân trang",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/my-rentals?group=current&page=1&limit=12",
+                "header": []
+              }
+            },
+            {
+              "name": "Yêu thích phân trang",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/my-favorites?page=1&limit=12",
+                "header": []
+              }
+            },
+            {
+              "name": "Đánh giá mẫu xe",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/models/{{model_id}}/reviews?page=1&limit=5",
+                "header": []
+              }
+            },
+            {
+              "name": "Mã giảm giá",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/coupons",
+                "header": []
+              }
+            },
+            {
+              "name": "Quote có mã",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/availability",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"model_id\": 24,\n  \"station_id\": 6,\n  \"start\": \"{{start}}\",\n  \"end\": \"{{end}}\",\n  \"coupon_code\": \"DEMO10\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Đặt chống gửi lặp",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/rentals",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"model_id\": 24,\n  \"station_id\": 6,\n  \"start\": \"{{start}}\",\n  \"end\": \"{{end}}\",\n  \"coupon_code\": \"DEMO10\",\n  \"request_key\": \"{{request_key}}\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if(pm.response.code===201) pm.environment.set('rental_id',pm.response.json().id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Dự toán gia hạn",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/rentals/{{rental_id}}/extension-quote",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"end\": \"{{extension_end}}\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Gia hạn chống gửi lặp",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/rentals/{{rental_id}}/extend",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"end\": \"{{extension_end}}\",\n  \"request_key\": \"{{extension_key}}\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Gửi sửa đánh giá",
+              "request": {
+                "method": "PUT",
+                "url": "{{base_url}}/rentals/{{rental_id}}/review",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rating\": 5,\n  \"content\": \"Chuyến đi demo thuận tiện, quy trình nhận trả rõ ràng.\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Thông báo",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/notifications?page=1&limit=12",
+                "header": []
+              }
+            },
+            {
+              "name": "Đọc thông báo",
+              "request": {
+                "method": "PATCH",
+                "url": "{{base_url}}/notifications/{{notification_id}}/read",
+                "header": []
+              }
+            },
+            {
+              "name": "Lịch sử hỗ trợ",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/support?page=1&limit=12",
+                "header": []
+              }
+            },
+            {
+              "name": "Tạo hỗ trợ",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/support",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rental_id\": 1,\n  \"kind\": \"BILLING\",\n  \"description\": \"Cần giải thích cách tính hóa đơn của đơn thuê demo.\"\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quản trị",
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{admin_token}}",
+                "type": "string"
+              }
+            ]
+          },
+          "item": [
+            {
+              "name": "Admin login",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/auth/login",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"admin@bike.example\",\n  \"password\": \"Demo12345!\"\n}"
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if(pm.response.code===200)pm.environment.set('admin_token',pm.response.json().token);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Thống kê thực",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/stats",
+                "header": []
+              }
+            },
+            {
+              "name": "Danh sách xe",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/bikes?page=1&limit=10",
+                "header": []
+              }
+            },
+            {
+              "name": "Danh sách hỗ trợ",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/support?page=1&limit=10",
+                "header": []
+              }
+            },
+            {
+              "name": "Danh sách mã",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/coupons?page=1&limit=10",
+                "header": []
+              }
+            },
+            {
+              "name": "Trạm",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/stations?page=1&limit=10",
+                "header": []
+              }
+            },
+            {
+              "name": "Loại xe",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/types?page=1&limit=10",
+                "header": []
+              }
+            },
+            {
+              "name": "Mẫu xe",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/models?page=1&limit=10",
+                "header": []
+              }
+            },
+            {
+              "name": "Đơn thuê admin",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/admin/rentals?page=1&limit=10",
+                "header": []
+              }
+            },
+            {
+              "name": "Chạy tác vụ",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/admin/tasks/run",
+                "header": []
+              }
+            },
+            {
+              "name": "Phản hồi hỗ trợ",
+              "request": {
+                "method": "PATCH",
+                "url": "{{base_url}}/admin/support/{{ticket_id}}",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"RESOLVED\",\n  \"response\": \"Đã kiểm tra và hướng dẫn hóa đơn mô phỏng.\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Tạo mã giảm giá",
+              "request": {
+                "method": "POST",
+                "url": "{{base_url}}/admin/coupons",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"DEMOEXTRA\",\n  \"kind\": \"FIXED\",\n  \"value\": 10000,\n  \"max_discount\": 10000,\n  \"min_subtotal\": 50000,\n  \"starts_at\": \"{{start}}\",\n  \"ends_at\": \"{{coupon_end}}\",\n  \"max_uses\": 100,\n  \"per_user_limit\": 1,\n  \"active\": true\n}"
+                }
+              }
+            },
+            {
+              "name": "Đưa xe bảo trì",
+              "request": {
+                "method": "PATCH",
+                "url": "{{base_url}}/admin/bikes/{{bike_id}}",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{bike_code}}\",\n  \"bike_model_id\": 24,\n  \"station_id\": 6,\n  \"price_per_hour\": 50000,\n  \"status\": \"MAINTENANCE\"\n}"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "if(!pm.environment.get('start')||Date.parse(pm.environment.get('start'))<Date.now()){pm.environment.set('request_key','postman-'+Date.now());pm.environment.set('extension_key','extend-'+Date.now());pm.environment.set('start',new Date(Date.now()+5*60000).toISOString());pm.environment.set('end',new Date(Date.now()+125*60000).toISOString());pm.environment.set('extension_end',new Date(Date.now()+185*60000).toISOString());}",
+              "if(!pm.environment.get('request_key'))pm.environment.set('request_key','postman-'+Date.now());",
+              "if(!pm.environment.get('extension_key'))pm.environment.set('extension_key','extend-'+Date.now());",
+              "pm.environment.set('coupon_end',new Date(Date.now()+30*86400000).toISOString());"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

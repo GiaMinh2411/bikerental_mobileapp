@@ -1,5 +1,56 @@
 # Kiểm thử thực tế
 
+## Bản nâng cấp dữ liệu và nghiệp vụ — 12/11/2026
+
+Kết quả cuối: Expo Doctor20/20 PASS, dependency check PASS sau cập nhật các bản vá SDK58; export web/Android/iOS PASS (web2.1MB, native khoảng3.9MB). Database demo sau2 lượt browser: **200 users,12 loại,60 mẫu,300 xe,20 trạm,2.404 đơn,602 reviews,211 notifications,22 tickets**,60 ảnh chính/60 thumbnail. Hai lượt tạo thêm2 đơn hoàn thành/2 review/2 ticket so với seed, không phải nhân đôi seed.
+
+Database người dùng đã backup trước migration bổ sung; không reset dev.db. Tests nay chạy trên test-upgrade.db riêng, không dùng Gemini key thật, còn browser test trên demo-large.db riêng. Đã dừng đúng backend watch để giải phóng Prisma DLL/SQLite khi migrate, giữ Metro của người dùng.
+
+- Backend và mobile typecheck/lint: PASS.
+- npm test: 4 test cases nhiều assertions xuyên suốt API, PASS. Bao gồm double-booking, hai request dùng mã lượt cuối trên hai xe khác nhau, release lượt sau cancel, cùng key đặt trả cùng đơn, đổi payload cùng key409, review trước hoàn thành409, quyền review/notifications/admin, gia hạn trùng lịch409, retry và đồng thời gia hạn không sinh event lần hai, sự cố đưa xe bảo trì/hủy lịch sau, return/fee/discount, sửa review, phản hồi admin và pagination không lặp giữa trang.
+- Seed lớn lần đầu: 12 loại/60 mẫu/300 xe/20 trạm/200 users/2.402 rentals/600 reviews demo/199 notifications/20 tickets/2 coupons. Chạy lại không nhân đôi ID seed; các thao tác browser có thể thêm rental/review/ticket/notification hợp lệ.
+- verify-upgrade: FK PASS, lịch sử thuê không trùng PASS, ownership/rating review PASS, subtotal/discount/total và công thức phí/cap PASS. Kiểm tra cap nâng cao đã bắt lỗi seed giảm vượt25k; sửa generator và chỉ repair dữ liệu seed tương ứng ở demo-large.db.
+- Kiểm tra lịch lịch sử dùng thời gian thực tế cho COMPLETED: trả sớm giải phóng xe nên không coi planned window cũ là còn giữ chỗ. Với BOOKED dùng lịch dự kiến, ONGOING dùng lúc nhận đến ít nhất hiện tại/giờ dự kiến. Các dòng legacy chưa có final_discount được hiểu0 khi không có mã; không sửa/xóa lịch sử để làm kiểm tra qua.
+- 60 hash ảnh chính khác nhau, 60 thumbnail tồn tại; ảnh chính tổng5.409.804 bytes. Đã xem contact sheet60 và screenshot Home desktop/mobile, Catalog desktop, Detail/Booking mobile; không cắt mất xe.
+- Chrome headless luồng nâng cấp: login → catalog → detail → quote có DEMO10 → confirm → pickup → extension quote/confirm → return → review → support → notifications → logout → admin login/stats → giải quyết support: PASS. Không có page error hoặc media404.
+- Screenshot tại docs/screenshots-upgrade: Home1440/1024/768/390/320 và844×390 ngang; Detail/Booking1440/768/390/320; catalog/admin desktop. Kiểm tra không tràn ngang. Đã sửa role review demo trên card để không xem số seed như bằng chứng khách hàng thật.
+- Đo30 GET /catalog với page12 trên60 models/2.404 rentals bằng Supertest trong tiến trình Windows: p50 **8,89ms**, p95 **16ms**, payload lớn nhất33.996 bytes. Đây không phải đo mạng, điện thoại, tải đồng thời hoặc cam kết production. Lệnh scripts/measure-catalog.ts cho phép đo lại sau thay đổi dữ liệu.
+
+### Chạy kiểm tra lại
+
+```powershell
+cd backend
+npm test
+npm run typecheck
+npm run lint
+$env:DATABASE_URL="file:./demo-large.db"
+npm run db:verify
+npx tsx scripts/measure-catalog.ts
+```
+
+Browser test cần backend demo riêng, không dùng API/key thật:
+
+```powershell
+# Terminal A, backend
+$env:DATABASE_URL="file:./demo-large.db"
+$env:PORT="4100"
+$env:CORS_ORIGINS="http://localhost:8181"
+$env:GEMINI_API_KEY=""
+npm run build
+npm start
+# Terminal B, mobile: chỉ thay biến của tiến trình, không sửa .env
+$env:EXPO_PUBLIC_API_URL="http://localhost:4100"
+npx expo export --platform web --output-dir dist-review
+cd ..\backend
+node scripts/web-upgrade-check.mjs
+```
+
+Chrome mặc định C:/Program Files/Google/Chrome/Application/chrome.exe, có thể đặt BROWSER_PATH. Script tự phục vụ build cổng8181 và đóng server/browser. Test có tạo một chuyến hoàn thành, review và support thật trong **database demo**. Không chạy đồng thời với người đang demo cùng tài khoản nếu không muốn thay dữ liệu demo của họ.
+
+Chưa kiểm tra điện thoại thật sau nâng UI; chưa build APK/deploy. Gemini thật chưa kiểm tra trong lần nâng cấp, chỉ kiểm tra fallback và giới hạn candidates; key thật của người dùng được giữ nguyên. Bộ góc phụ cho20 mẫu chưa có. Test restore ghi đè chưa thực hiện. Không dùng gate landing page thay cho native verification; áp dụng quy tắc app theo yêu cầu người dùng.
+
+## Lịch sử kiểm tra trước nâng cấp
+
 ## Cập nhật tương thích Expo Go SDK 58
 
 Project đã nâng từ SDK 57 lên SDK 58 theo lỗi không tương thích trên iPhone: Expo ~58.0.23, React/React DOM 19.3.0, React Native 0.88.1 và các module native do `expo install --fix` chọn. Typecheck và lint PASS; Expo Doctor 20/20 PASS; `expo install --check` PASS; export web, Android và iOS PASS (web khoảng 2.1 MB, native khoảng 3.9 MB mỗi bundle). Chưa xác minh trên iPhone thật. Các kết quả kiểm thử đầy đủ bên dưới là kết quả trước lần nâng SDK, không thay thế regression test trên thiết bị. Địa chỉ API LAN trong mobile/.env được giữ nguyên.

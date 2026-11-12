@@ -1,5 +1,21 @@
 # Hệ thống thiết kế Bike Rental
 
+## Bản nâng cấp ứng dụng
+
+Trang chủ nay là không gian tìm xe và quản lý chuyến đi: form tìm kiếm, trạm, thời gian ở cột chính; trợ lý và chuyến hiện tại ở cột phụ khi desktop; điện thoại xếp một cột. Bỏ ảnh hero chiếm màn hình. Danh sách dùng FlatList, 1/2/3 cột, bộ lọc ở đầu, chip bỏ từng bộ lọc, tải thêm có trạng thái riêng. Chi tiết đặt giá/hành động ngay sau ảnh, có thông số, trạm, lịch và review từ database; đánh giá demo được ghi rõ cả ở card và từng review.
+
+Các màn hình đặt/chi tiết đơn có bảng tiền thuê–giảm giá–phí khác–tổng, chính sách trước xác nhận, timeline sự kiện, hành động theo trạng thái, gia hạn và đánh giá. Thông báo, mã giảm giá, hỗ trợ và khu quản trị dùng chung bộ component; admin là khu riêng theo role, không thay 5 tab chính.
+
+Token thực tế: `mobile/src/theme/config.ts`: forest #164D3C, mint #E5F0E8, ground #F3F5EF, ink #172D25, muted #5A6C62, line #D7DFD8, error #A22C29. Named Tamagui color/space/radius tokens; metrics screen20/section24/card16/control48/radius14/maxWidth1120/formWidth680. Typography heading 30 trên điện thoại/36 desktop, section22, card19, body16/24, label14, metadata13. Border1; không bóng mặc định, ưu tiên phân cấp bằng nền và viền. Không thêm shader, gradient, emoji chức năng hoặc số liệu trang trí.
+
+`ui.tsx`: button/input/card/select modal/photo/page; `states.tsx`: badge trạng thái, skeleton tĩnh, empty/error/retry và ScreenList virtualized. Vùng bấm button48, chip44, icon thông báo48+. Select là React Native Modal, không dùng select HTML. Form tối đa680, nội dung1120, danh sách1160 gồm padding. Các breakpoint vẫn <640 một cột, 640–999 hai cột, >=1000 ba cột. useWindowDimensions đổi bố cục khi xoay; không khóa portrait. KeyboardAvoidingView cho form/danh sách iOS, header/tab từ React Navigation và SafeAreaProvider.
+
+Ảnh contain, không cắt xe, aspect1.4 ở card/1.5 ở ảnh lớn, chiều cao lớn tối đa380; thumbnail480 và ảnh lớn1200 WebP. Fallback icon cục bộ không tính vào số ảnh. Bộ dữ liệu ảnh mới thống nhất studio, có biến thể nền ánh sáng tự nhiên. Đã xem contact-sheet-60 và ảnh chụp Home/Catalog/Detail/Booking desktop/mobile. Chưa có bộ góc phụ cùng xe đã xác minh: gallery hỗ trợ nhiều ảnh nhưng không dùng xe khác làm góc phụ.
+
+Motion: press scale .985, entrance nhẹ400ms tôn trọng giảm chuyển động; skeleton không nhấp nháy, modal không animation bắt buộc. Nội dung luôn đọc được khi giảm chuyển động. Áp dụng Taste Skill theo yêu cầu app: không section toàn màn hình, giá và tên được phép bên dưới ảnh, ảnh AI/demo/review demo được ghi rõ. Không dùng checker landing page để tuyên bố native PASS.
+
+## Thiết kế ban đầu (tham khảo lịch sử)
+
 Ứng dụng thuê xe học tập, không phải landing page. Đã đọc Taste Skill 2.5.1 cùng system, layout-v4, sections, copy, copy-voice, motion và photos. Áp dụng hệ thống thống nhất, lề cân nhau, ảnh sản phẩm lớn, chữ rõ và chuyển động có mục đích. Yêu cầu mobile và dữ liệu demo của đề bài ưu tiên hơn các quy tắc website: không ép section cao 900px, không chèn HTML/CSS kit vào native, không chạy checker chuyên cho DOM để tuyên bố kiểm tra native.
 
 ## Token

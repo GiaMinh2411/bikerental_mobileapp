@@ -1,5 +1,84 @@
 # Bike Rental App
 
+## Bản nâng cấp ngày 12/11/2026
+
+Giữ Expo SDK58, React Navigation, Tamagui, Redux/Axios, Express/Prisma/SQLite. Có tìm kiếm/phân trang theo lịch, mã giảm giá, chống gửi lặp khi đặt/gia hạn, nhận/trả mô phỏng, đánh giá, thông báo nội bộ, hỗ trợ và quản trị. Quy tắc chi tiết ở BUSINESS_RULES.md; kết quả thực tế và giới hạn ở UPGRADE_SUMMARY.md.
+
+**Database hiện có không bị reset.** Đã sao lưu trước migration mới `20261112075202_rental_upgrade`. Ảnh dùng chung có 60 ảnh chính và 60 thumbnail cục bộ. Bộ dữ liệu lớn ở `backend/prisma/demo-large.db` riêng: 12 loại, 60 mẫu, 300 xe, 20 trạm, 200 tài khoản, ít nhất 2.402 đơn và 600 đánh giá demo. Các thao tác kiểm thử có thể thêm một số đơn/đánh giá sau seed.
+
+### Chạy bộ demo lớn trên Windows
+
+Dừng backend trước khi migrate hoặc seed. Không ghi đè `.env` đang chứa key của bạn.
+
+```powershell
+cd D:\bike_rental_app\backend
+npm ci
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+# JWT_SECRET cần chuỗi ngẫu nhiên ít nhất 32 ký tự; giữ Gemini key đã có.
+npx prisma generate
+npm run db:backup
+npm run db:migrate
+npm run db:demo-large -- --seed=42 --rentals=2400
+$env:DATABASE_URL = "file:./demo-large.db"
+npm run dev
+```
+
+Lệnh demo-large tự migrate file riêng, seed theo batch, kiểm tra FK/lịch/tiền/chủ đánh giá/hash ảnh. Có thể đặt `--rentals=5000` (2.000–20.000) và `--seed=123` cho một database demo mới. Chạy lại không nhân đôi các ID seed hoặc xóa thao tác demo đã thực hiện. Muốn dữ liệu sinh lại với random seed khác, dùng một workspace/demo database mới; không xóa file hiện tại để chữa lỗi.
+
+Terminal thứ hai:
+
+```powershell
+cd D:\bike_rental_app\mobile
+npm ci
+# Giữ mobile/.env hiện có. Web cùng máy có thể dùng http://localhost:4000.
+npm run web
+```
+
+Đăng nhập người dùng `demo1@bike.example` hoặc quản trị `admin@bike.example`, mật khẩu chung **Demo12345!**. Các địa điểm, thông số, mã ưu đãi và review seed đều là dữ liệu mô phỏng. Không dùng những tài khoản này cho production.
+
+### Chạy database nhỏ hiện có
+
+Không đặt DATABASE_URL trong terminal, hoặc chạy `Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue` để dùng lại backend/.env. Chạy `npm run db:migrate`, `npm run db:seed`, `npm run dev`. Seed nhỏ giữ 24 mẫu/48 xe/6 trạm, bổ sung tài khoản admin demo và mã DEMO10; không nhân đôi seed cũ. Dữ liệu cũ được backfill các thành phần tiền khi migrate, không tự xóa đơn.
+
+### Điện thoại thật
+
+Giữ backend mở ở 0.0.0.0:4000, máy tính và điện thoại cùng Wi-Fi. `mobile/.env` đặt `EXPO_PUBLIC_API_URL=http://IP-LAN-CUA-MAY:4000`; địa chỉ LAN hiện có của bạn được giữ nguyên. Trên điện thoại mở `http://IP:4000/health` trước; nếu không thấy status ok, kiểm tra IP/mạng và Windows Firewall cho Node trên mạng private.
+
+Đăng nhập cùng tài khoản Expo trên iPhone/Expo Go SDK58 và CLI, rồi `npx expo start --clear --lan`. Nếu Expo login lỗi mở trình duyệt Windows, dùng:
+
+```powershell
+$env:BROWSER="none"
+npx expo login --browser
+# Giữ terminal mở, copy link MỚI sang trình duyệt cùng máy, nhập mã email.
+npx expo whoami
+Remove-Item Env:BROWSER
+npx expo start --clear --lan
+```
+
+Quét QR mới. Web thành công và native bundle thành công chưa phải kiểm chứng trên thiết bị thật. EAS APK/internet xem DEPLOY.md.
+
+### Kiểm tra bản nâng cấp
+
+```powershell
+cd D:\bike_rental_app\backend
+npm test
+# Tests dùng test-upgrade.db riêng, không gọi Gemini thật và không sửa dev.db.
+npm run typecheck
+npm run lint
+$env:DATABASE_URL="file:./demo-large.db"
+npm run db:verify
+npx tsx scripts/measure-catalog.ts
+cd ..\mobile
+npm run typecheck
+npm run lint
+npx expo-doctor
+npx expo export --platform all
+```
+
+Kiểm thử trình duyệt nâng cấp có hướng dẫn riêng trong TESTING.md; chạy backend demo cổng 4100 và build `dist-review` để không thay API URL của phiên demo đang dùng.
+
+## Hướng dẫn cài đặt cơ bản / bộ dữ liệu nhỏ
+
 Ứng dụng học tập dùng chung React Native + Expo SDK 58 + TypeScript cho web, Android, iOS. Tamagui, React Navigation, Axios, Redux Toolkit; API Express, Prisma 6, SQLite. Không có website React riêng. Giữ nguyên `.agents` và `skills-lock.json`.
 
 ## Chạy trên Windows / VS Code

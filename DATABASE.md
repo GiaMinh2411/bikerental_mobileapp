@@ -1,5 +1,21 @@
 # Database
 
+## Migration và seed bản nâng cấp
+
+Giữ SQLite/Prisma6. Không sửa migration init đã áp dụng. Migration mới `20261112075202_rental_upgrade` thêm bảng/field với default và backfill `estimated_subtotal=estimated_total`, `final_subtotal=final_total`, min_price từ xe hiện có. Backup trước migration tại backend/backups; không reset dev.db. Backend phải dừng khi migrate/generate trên Windows để tránh SQLite lock và Prisma DLL đang được dùng.
+
+User thêm role USER/ADMIN và is_demo; Station/BikeType/BikeModel thêm active; model thêm min_price. Rental thêm request_key/hash unique theo user, policy_version, các thành phần tiền dự kiến/thực tế, snapshot mã giảm và is_demo. Bảng mới: reviews (unique rental, user/model FK), coupons, coupon_redemptions (unique rental, RESERVED/USED/RELEASED), rental_events, rental_actions (unique rental/key), notifications (dedupe_key unique, read_at), support_tickets. Index trên catalog active/min_price/id, review model/date/id, thông báo user/read/date/id, support user/status/date/id và redemption coupon/status/user.
+
+`npm run db:seed`: bộ nhỏ hiện có, 24 mẫu/48 xe/6 trạm/8 loại; thêm admin demo và DEMO10 bằng upsert. Không cập nhật lại thời gian/giá đơn đã dùng. `npm run db:demo-large -- --seed=42 --rentals=2400`: tự đặt DATABASE_URL chỉ cho subprocess tới `file:./demo-large.db`, tạo database RIÊNG, 12 loại/60 mẫu/300 xe/20 trạm/200 users/2.400 lịch sử + 2 chuyến hiện tại/600 reviews demo. Chạy lại theo ID ổn định, không nhân đôi. Batches100 rentals, dùng PRNG xác định theo seed, lịch trải gần 12 tháng; khoảng cách cùng xe không trùng.
+
+Tài khoản bộ lớn: demo1/2/3@bike.example và rider4…rider199@bike.example, admin@bike.example là ADMIN; mật khẩu demo chung Demo12345!. Tất cả user seed có is_demo. Review seed chỉ gắn vào đơn COMPLETED của đúng user/model, nội dung demo rõ ràng. Có favorites, 2 coupons, notifications và support. Mã/seed chỉ cho môi trường phát triển; script chặn NODE_ENV=production và seed-large chặn đường dẫn ngoài demo-large.db.
+
+`npm run db:verify` kiểm FK, tự join tìm lịch trùng (kể cả lịch sử hoàn thành), ownership review, khoảng rating, các thành phần tiền, công thức làm tròn/discount cap và SHA-256 ảnh chính khác nhau/thumbnail tồn tại. Đặt DATABASE_URL vào đúng terminal trước lệnh. Test tự dùng test-upgrade.db riêng. Sửa lỗi cap của seed cũ chỉ áp dụng các dòng lịch sử is_demo do generator tạo trong file demo lớn, không đụng dev.db.
+
+Xem BUSINESS_RULES.md cho coupon reservation, expiry task, extension và bảo trì. Backup/restore phát triển bên dưới vẫn áp dụng; không restore khi backend đang mở database.
+
+## Schema ban đầu và vận hành
+
 SQLite qua Prisma ORM 6.19.0. File mặc định `backend/prisma/dev.db` do DATABASE_URL=file:./dev.db (đường dẫn tính từ schema). Thời gian DateTime UTC, JSON API ISO 8601; UI dùng Asia/Ho_Chi_Minh. VNĐ Int, không số thực.
 
 ## Quan hệ

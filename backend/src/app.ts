@@ -1,3 +1,5 @@
+import { features } from "./routes/features.js";
+import { catalog, modelInclude } from "./services/catalog.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -14,7 +16,6 @@ import {
   quote,
   transition,
   rentalInclude,
-  available,
   dates,
 } from "./services/rentals.js";
 export const app = express();
@@ -37,8 +38,18 @@ app.use((req, _res, next) => {
     .split("/")
     .some(
       (segment, i, all) =>
-        ["models", "stations", "favorites", "rentals"].includes(all[i - 1]) &&
-        !/^\d+$/.test(segment),
+        [
+          "models",
+          "stations",
+          "favorites",
+          "rentals",
+          "notifications",
+          "favorite-status",
+          "support",
+          "coupons",
+          "bikes",
+          "types",
+        ].includes(all[i - 1]) && !/^\d+$/.test(segment),
     );
   next(invalid ? new AppError(400, "ID phải là số nguyên dương.") : undefined);
 });
@@ -49,18 +60,15 @@ const limit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+app.use(features);
 const publicUser = {
+  role: true,
   id: true,
   full_name: true,
   email: true,
   phone: true,
   created_at: true,
   updated_at: true,
-};
-const modelInclude = {
-  type: true,
-  images: { orderBy: { sort_order: "asc" as const } },
-  bikes: { include: { station: true } },
 };
 const credentials = z.object({
   email: z.email().transform((v) => v.toLowerCase().trim()),
@@ -71,6 +79,8 @@ const booking = z.object({
   station_id: z.number().int().positive(),
   start: z.iso.datetime({ offset: true }),
   end: z.iso.datetime({ offset: true }),
+  coupon_code: z.string().max(30).optional(),
+  request_key: z.string().min(8).max(100).optional(),
 });
 app.get("/health", async (_req, res) => {
   await db.$queryRaw`SELECT 1`;
@@ -133,10 +143,14 @@ app.patch("/me", auth, async (req, res) => {
     }),
   );
 });
-app.get("/types", async (_req, res) => res.json(await db.bikeType.findMany()));
+app.get("/types", async (_req, res) =>
+  res.json(await db.bikeType.findMany({ where: { active: true } })),
+);
 app.get("/stations", async (_req, res) =>
   res.json(
     await db.station.findMany({
+      where: { active: true },
+      take: 100,
       include: { _count: { select: { bikes: true } } },
     }),
   ),
@@ -151,41 +165,11 @@ app.get("/stations/:id", async (req, res) => {
   if (!s) throw new AppError(404, "Không tìm thấy trạm.");
   res.json(s);
 });
-app.get("/models", async (req, res) => {
-  const q = z
-    .object({
-      q: z.string().max(100).optional(),
-      type: z.coerce.number().int().positive().optional(),
-      station: z.coerce.number().int().positive().optional(),
-      max: z.coerce.number().int().nonnegative().optional(),
-      sort: z.enum(["price_asc", "price_desc", "name"]).optional(),
-    })
-    .parse(req.query);
-  const models = await db.bikeModel.findMany({
-    where: {
-      name: { contains: q.q ?? "" },
-      type_id: q.type,
-      bikes: {
-        some: {
-          status: "ACTIVE",
-          station_id: q.station,
-          price_per_hour: q.max === undefined ? undefined : { lte: q.max },
-        },
-      },
-    },
-    include: modelInclude,
-  });
-  const price = (m: (typeof models)[number]) =>
-    Math.min(...m.bikes.map((b) => b.price_per_hour));
-  models.sort((a, b) =>
-    q.sort === "name"
-      ? a.name.localeCompare(b.name)
-      : q.sort === "price_desc"
-        ? price(b) - price(a)
-        : price(a) - price(b),
-  );
-  res.json(models);
-});
+app.get("/models", async (req, res) =>
+  res.json(
+    (await catalog({ ...req.query, limit: req.query.limit ?? 40 })).items,
+  ),
+);
 app.get("/models/:id", async (req, res) => {
   const m = await db.bikeModel.findUnique({
     where: { id: Number(req.params.id) },
@@ -194,15 +178,30 @@ app.get("/models/:id", async (req, res) => {
   if (!m) throw new AppError(404, "Không tìm thấy xe.");
   res.json(m);
 });
-app.post("/availability", async (req, res) => {
-  const d = booking.parse(req.body);
-  res.json(await quote(d.model_id, d.station_id, d.start, d.end));
-});
+app.post(
+  "/availability",
+  (req, res, next) =>
+    req.headers.authorization ? auth(req, res, next) : next(),
+  async (req, res) => {
+    const d = booking.parse(req.body);
+    res.json(
+      await quote(
+        d.model_id,
+        d.station_id,
+        d.start,
+        d.end,
+        d.coupon_code,
+        res.locals.user,
+      ),
+    );
+  },
+);
 app.get("/favorites", auth, async (_req, res) =>
   res.json(
     (
       await db.favorite.findMany({
         where: { user_id: res.locals.user },
+        take: 40,
         include: { model: { include: modelInclude } },
       })
     ).map((f) => f.model),
@@ -229,6 +228,7 @@ app.get("/rentals", auth, async (_req, res) =>
   res.json(
     await db.rental.findMany({
       where: { user_id: res.locals.user },
+      take: 20,
       include: rentalInclude,
       orderBy: { created_at: "desc" },
     }),
@@ -267,7 +267,7 @@ app.post(
         type_id: z.number().int().positive().optional(),
       })
       .parse(req.body);
-    const { s, e } = dates(d.start, d.end);
+    dates(d.start, d.end);
     const purpose = d.purpose.toLowerCase();
     const suggestedType = /trẻ|bé|em bé/.test(purpose)
       ? 7
@@ -284,18 +284,23 @@ app.post(
                 : /touring|đường dài/.test(purpose)
                   ? 4
                   : undefined;
-    const models = await db.bikeModel.findMany({
-      where: { type_id: d.type_id ?? suggestedType },
-      include: modelInclude,
+    const found = await catalog({
+      station: d.station_id,
+      max: d.budget,
+      type: d.type_id ?? suggestedType,
+      start: d.start,
+      end: d.end,
+      limit: 12,
     });
-    const candidates = [];
-    for (const m of models) {
-      const bs = await available(db, m.id, d.station_id, s, e);
-      const b = bs.find((b) => b.price_per_hour <= d.budget);
-      if (b) candidates.push({ ...m, matched_rate: b.price_per_hour });
-    }
+    const candidates = (found.items as any[]).map((m) => ({
+      ...m,
+      matched_rate: Math.min(...m.bikes.map((b: any) => b.price_per_hour)),
+    }));
     let chosen = candidates.slice(0, 3),
       mode = "Gợi ý theo bộ lọc";
+    let fallback_reason = candidates.length
+      ? "NOT_CONFIGURED"
+      : "NO_CANDIDATES";
     if (process.env.GEMINI_API_KEY && candidates.length)
       try {
         const response = await fetch(
@@ -321,20 +326,37 @@ app.post(
             }),
           },
         );
-        if (!response.ok) throw new Error();
+        if (!response.ok) throw new Error(`PROVIDER_HTTP_${response.status}`);
         const raw: any = await response.json();
         const parsed = z
           .object({ ids: z.array(z.number().int()).max(3) })
           .parse(JSON.parse(raw.candidates[0].content.parts[0].text));
-        const valid = candidates.filter((m) => parsed.ids.includes(m.id));
+        if (parsed.ids.some((id) => !candidates.some((m) => m.id === id)))
+          throw new Error("INVALID_MODEL_IDS");
+        const valid = Array.from(new Set(parsed.ids)).map((id) =>
+          candidates.find((m) => m.id === id)!,
+        );
         if (!valid.length) throw new Error();
         chosen = valid;
         mode = "Gợi ý AI";
-      } catch {
-        /* Database candidates remain the source of truth on provider failure. */
+        fallback_reason = "";
+        console.info(
+          JSON.stringify({
+            event: "advice",
+            provider: "gemini",
+            selected_ids: valid.map((m) => m.id),
+          }),
+        );
+      } catch (err) {
+        fallback_reason =
+          err instanceof Error && /^PROVIDER_HTTP_/.test(err.message)
+            ? err.message
+            : "PROVIDER_TIMEOUT_OR_INVALID_RESULT";
+        console.info(JSON.stringify({ event: "advice", fallback_reason }));
       }
     res.json({
       mode,
+      fallback_reason: fallback_reason || null,
       explanation:
         "Các xe dưới đây phù hợp ngân sách và còn lịch tại trạm đã chọn. Lịch được kiểm tra lại khi đặt.",
       models: chosen,

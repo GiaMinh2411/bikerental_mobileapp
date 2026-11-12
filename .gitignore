@@ -10,3 +10,5 @@ web-build/
 backend/backups/
 *.log
 backend/scripts/image-inputs.json
+backend/scripts/upgrade-image-inputs.json
+mobile/dist-review/

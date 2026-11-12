@@ -133,12 +133,13 @@ const password_hash = await bcrypt.hash("Demo12345!", 12);
 for (let i = 1; i <= 3; i++) {
   await db.user.upsert({
     where: { email: `demo${i}@bike.example` },
-    update: {},
+    update: {is_demo:true},
     create: {
       id: i,
       email: `demo${i}@bike.example`,
       full_name: `Người dùng demo ${i}`,
       password_hash,
+      is_demo: true,
     },
   });
   await db.favorite.upsert({
@@ -172,12 +173,56 @@ for (let i = 1; i <= 4; i++) {
       actual_end_at: i === 3 ? end : null,
       hourly_rate: bike.price_per_hour,
       estimated_total: 2 * bike.price_per_hour,
+      estimated_subtotal: 2 * bike.price_per_hour,
+      final_subtotal: i === 3 ? 2 * bike.price_per_hour : null,
+      final_discount: i === 3 ? 0 : null,
+      is_demo: true,
       final_total: i === 3 ? 2 * bike.price_per_hour : null,
       status,
-      payment_status: i === 3 ? "SIMULATED_PAID" : "SIMULATED_PENDING",
+      payment_status:
+        i === 3
+          ? "SIMULATED_PAID"
+          : i === 4
+            ? "SIMULATED_VOID"
+            : "SIMULATED_PENDING",
     },
   });
 }
+
+await db.user.upsert({
+  where: { email: "admin@bike.example" },
+  update: {},
+  create: {
+    email: "admin@bike.example",
+    full_name: "Quản trị demo",
+    password_hash,
+    role: "ADMIN",
+    is_demo: true,
+  },
+});
+const liveModels = await db.bikeModel.findMany({
+  select: { id: true, bikes: { select: { price_per_hour: true } } },
+});
+for (const m of liveModels)
+  await db.bikeModel.update({
+    where: { id: m.id },
+    data: { min_price: Math.min(...m.bikes.map((b) => b.price_per_hour)) },
+  });
+await db.coupon.upsert({
+  where: { code: "DEMO10" },
+  update: {},
+  create: {
+    code: "DEMO10",
+    kind: "PERCENT",
+    value: 10,
+    max_discount: 25000,
+    min_subtotal: 20000,
+    starts_at: new Date(Date.now() - 86400000),
+    ends_at: new Date(Date.now() + 90 * 86400000),
+    max_uses: 10000,
+    per_user_limit: 5,
+  },
+});
 console.log({
   users: await db.user.count(),
   stations: await db.station.count(),

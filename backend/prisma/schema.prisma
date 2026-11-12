@@ -11,10 +11,15 @@ model User {
   email String @unique
   password_hash String
   phone String @default("")
+  role String @default("USER")
+  is_demo Boolean @default(false)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   rentals Rental[]
   favorites Favorite[]
+  reviews Review[]
+  notifications Notification[]
+  tickets SupportTicket[]
   @@map("users")
 }
 model Station {
@@ -24,6 +29,7 @@ model Station {
   latitude Float
   longitude Float
   image_path String
+  active Boolean @default(true)
   created_at DateTime @default(now())
   bikes Bike[]
   pickups Rental[] @relation("Pickup")
@@ -34,6 +40,7 @@ model BikeType {
   id Int @id @default(autoincrement())
   name String @unique
   description String
+  active Boolean @default(true)
   models BikeModel[]
   @@map("bike_types")
 }
@@ -44,11 +51,15 @@ model BikeModel {
   brand String
   description String
   specifications String
+  active Boolean @default(true)
+  min_price Int @default(0)
   type BikeType @relation(fields:[type_id],references:[id])
   images BikeImage[]
   bikes Bike[]
   favorites Favorite[]
+  reviews Review[]
   @@index([type_id])
+  @@index([active,min_price,id],map:"bike_models_active_min_price_id")
   @@map("bike_models")
 }
 model BikeImage {
@@ -92,13 +103,129 @@ model Rental {
   payment_status String @default("SIMULATED_PENDING")
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  request_key String?
+  request_hash String?
+  policy_version String @default("v1-hourly")
+  estimated_subtotal Int @default(0)
+  estimated_discount Int @default(0)
+  final_subtotal Int?
+  final_discount Int?
+  discount_type String @default("NONE")
+  discount_value Int @default(0)
+  discount_cap Int @default(0)
+  coupon_id Int?
+  coupon_code String?
+  is_demo Boolean @default(false)
   user User @relation(fields:[user_id],references:[id])
   bike Bike @relation(fields:[bike_id],references:[id])
   pickup Station @relation("Pickup",fields:[pickup_station_id],references:[id])
   return_station Station? @relation("Return",fields:[return_station_id],references:[id])
+  review Review?
+  events RentalEvent[]
+  notifications Notification[]
+  tickets SupportTicket[]
+  redemption CouponRedemption?
+  actions RentalAction[]
+  coupon Coupon? @relation(fields:[coupon_id],references:[id])
+  @@unique([user_id,request_key])
   @@index([bike_id,status,planned_start_at,planned_end_at])
   @@index([user_id,created_at])
   @@map("rentals")
+}
+model Review {
+  id Int @id @default(autoincrement())
+  rental_id Int @unique
+  user_id Int
+  bike_model_id Int
+  rating Int
+  content String
+  is_demo Boolean @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  rental Rental @relation(fields:[rental_id],references:[id])
+  user User @relation(fields:[user_id],references:[id])
+  model BikeModel @relation(fields:[bike_model_id],references:[id])
+  @@index([bike_model_id,created_at,id])
+  @@map("reviews")
+}
+model Coupon {
+  id Int @id @default(autoincrement())
+  code String @unique
+  kind String
+  value Int
+  max_discount Int
+  min_subtotal Int
+  starts_at DateTime
+  ends_at DateTime
+  max_uses Int
+  per_user_limit Int @default(1)
+  active Boolean @default(true)
+  is_demo Boolean @default(true)
+  rentals Rental[]
+  redemptions CouponRedemption[]
+  @@map("coupons")
+}
+model CouponRedemption {
+  id Int @id @default(autoincrement())
+  coupon_id Int
+  user_id Int
+  rental_id Int @unique
+  status String @default("RESERVED")
+  coupon Coupon @relation(fields:[coupon_id],references:[id])
+  rental Rental @relation(fields:[rental_id],references:[id])
+  @@index([coupon_id,status,user_id])
+  @@map("coupon_redemptions")
+}
+model RentalEvent {
+  id Int @id @default(autoincrement())
+  rental_id Int
+  kind String
+  note String
+  created_at DateTime @default(now())
+  rental Rental @relation(fields:[rental_id],references:[id])
+  @@index([rental_id,created_at,id])
+  @@map("rental_events")
+}
+model RentalAction {
+  id Int @id @default(autoincrement())
+  rental_id Int
+  request_key String
+  request_hash String
+  result String
+  rental Rental @relation(fields:[rental_id],references:[id])
+  @@unique([rental_id,request_key])
+  @@map("rental_actions")
+}
+model Notification {
+  id Int @id @default(autoincrement())
+  user_id Int
+  rental_id Int?
+  kind String
+  title String
+  body String
+  dedupe_key String @unique
+  read_at DateTime?
+  created_at DateTime @default(now())
+  user User @relation(fields:[user_id],references:[id])
+  rental Rental? @relation(fields:[rental_id],references:[id])
+  @@index([user_id,read_at,created_at,id])
+  @@map("notifications")
+}
+model SupportTicket {
+  id Int @id @default(autoincrement())
+  user_id Int
+  rental_id Int
+  kind String
+  description String
+  status String @default("OPEN")
+  response String @default("")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user User @relation(fields:[user_id],references:[id])
+  rental Rental @relation(fields:[rental_id],references:[id])
+  @@index([user_id,created_at,id])
+  @@index([status,created_at,id])
+  @@map("support_tickets")
 }
 model Favorite {
   user_id Int

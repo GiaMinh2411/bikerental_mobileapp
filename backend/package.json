@@ -8,9 +8,12 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "node scripts/test-suite.mjs",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "db:demo-large": "node scripts/demo-large.mjs",
+    "db:verify": "tsx scripts/verify-upgrade.ts",
+    "tasks:run": "tsx scripts/tasks.ts",
     "db:reset": "prisma migrate reset",
     "db:backup": "tsx scripts/database.ts backup",
     "db:restore": "tsx scripts/database.ts restore"

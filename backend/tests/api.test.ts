@@ -180,6 +180,8 @@ test("full rental workflow, concurrency, ownership, idempotency and fallback", a
       .expect(200);
     await db.user.delete({ where: { id: registration.body.user.id } });
   } finally {
+    await db.notification.deleteMany({ where: { rental_id: { in: ids } } });
+    await db.rentalEvent.deleteMany({ where: { rental_id: { in: ids } } });
     await db.rental.deleteMany({ where: { id: { in: ids } } });
   }
 });

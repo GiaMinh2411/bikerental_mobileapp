@@ -1,5 +1,13 @@
 # Expo Go, EAS và phân phối
 
+## Lưu ý sau nâng cấp
+
+Migration rental_upgrade phải được áp dụng trước chạy server mới. Dừng backend khi migrate/generate trên Windows. Giữ SQLite và media trên volume bền; chỉ một backend writer. Bộ demo lớn nằm demo-large.db riêng, không tự chuyển file production; không chạy seed/demo accounts trên production. ADMIN do seed phát triển tạo, không có nâng quyền qua profile. Không reset để giải quyết migration lock.
+
+Scheduler nhắc giờ/hết hạn hiện chạy trong tiến trình30s và khi startup; triển khai phải giữ backend hoạt động, theo dõi lỗi/retry và backup. Khả năng xử lý nhiều replica/job queue chưa nằm trong bản này. Role, mã giảm giá, thông báo và support là backend thật; thanh toán vẫn mô phỏng. Key Gemini vẫn chỉ ở backend, còn EXPO_PUBLIC_API_URL là public endpoint.
+
+Repo hiện có mobile là gitlink/embedded repository (`git ls-files --stage mobile` mode160000), chưa có thao tác chuẩn hóa/push trong lần nâng cấp. Cần bảo đảm source mobile được quản lý đúng bằng submodule có remote hoặc thư mục thường trước khi bàn giao GitHub; không tự sửa metadata Git/ghi đè thay đổi hiện có của người dùng.
+
 Chưa tự động push GitHub, deploy host hoặc build APK; các thao tác cần tài khoản và cấu hình của chủ dự án. Source có thể đưa lên Git sau khi kiểm tra không chứa .env, database, node_modules hay tài khoản thật.
 
 ## Backend internet
