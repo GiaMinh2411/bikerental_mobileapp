@@ -12,3 +12,5 @@ backend/backups/
 backend/scripts/image-inputs.json
 backend/scripts/upgrade-image-inputs.json
 mobile/dist-review/
+
+.git-local-backups/
